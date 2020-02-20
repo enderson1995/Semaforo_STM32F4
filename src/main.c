@@ -20,10 +20,9 @@
 /***********  Metan todas las variables aqui, indiquen pa q las usan ************************/
 /*********************************************************************************************/
 
-
+#include "stm32f4xx.h"
 #include "stm32f4xx_hal.h"
 #include "stm32f4_discovery.h"
-
 #include "stm32f4xx_hal_tim.h"
 #include "stm32f4xx_hal_rcc.h"
 
@@ -32,6 +31,11 @@ static TIM_HandleTypeDef timerInstance = {
 };
 
 int t2Counter = 0;
+int contadorRojo = 10;
+int contadorVerde = 10;
+int contadorAmarillo=4;
+int contadorSema = 0;
+
  
 
 /*******************************************************************************/
@@ -49,16 +53,28 @@ void SysTick_Handler(void)    //Esto me mantiene el micro corriendo al reiniciar
 
 //Función que inicializa el/los timers
 void initializeTimers(){
+  
+  
+  HAL_TIM_Base_MspInit(&timerInstance);
   __TIM2_CLK_ENABLE();                //Habilito el timer1
-  timerInstance.Init.Prescaler=999;                     //Prescaler de 40000 
+  timerInstance.Init.Prescaler=4199;                     //Prescaler de 16000 
   timerInstance.Init.CounterMode = TIM_COUNTERMODE_UP;    //Cuento para arriba
-  timerInstance.Init.Period = 15999;                       //Periodo de 1 segundo
-  timerInstance.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  timerInstance.Init.RepetitionCounter = 0;
-  HAL_TIM_Base_Init(&timerInstance);                 //
-  // HAL_NVIC_SetPriority(TIM2_IRQn, 0, 0);
-  // HAL_NVIC_EnableIRQ(TIM2_IRQn);
-  HAL_TIM_Base_Start_IT(&timerInstance);
+  timerInstance.Init.Period = 9999;                       //Periodo de 1 segundo
+  timerInstance.Init.ClockDivision = 0U;
+  
+  HAL_NVIC_SetPriority(TIM2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(TIM2_IRQn);
+  __HAL_TIM_CLEAR_FLAG(&timerInstance, TIM_SR_UIF);
+  if(HAL_TIM_Base_Init(&timerInstance) == HAL_OK)
+  {
+    /* Start the TIM time Base generation in interrupt mode */
+    // HAL_TIM_Base_Start_IT(&timerInstance);
+    __HAL_TIM_ENABLE_IT(&timerInstance, TIM_IT_UPDATE);
+      
+  /* Enable the Peripheral */
+      __HAL_TIM_ENABLE(&timerInstance);
+      
+  }
   
 }
   
@@ -70,17 +86,39 @@ void initializeLeds(){
   BSP_LED_Init(LED6);   //Led Verde
 }
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *timerInstance)
-{
- BSP_LED_Toggle(LED4);
+
+void TIM2_IRQHandler(){
+  if (__HAL_TIM_GET_FLAG(&timerInstance, TIM_FLAG_UPDATE) != RESET)      //In case other interrupts are also running
+  {
+    t2Counter= t2Counter + 1;
+    if (t2Counter==200000){
+      BSP_LED_Toggle(LED4);
+      t2Counter = 0;
+      contadorSema = contadorSema+1;
+      
+      if((contadorSema>0) && (contadorSema < contadorVerde)){
+        printf("Enciendo Verde");
+        BSP_LED_Off(LED3);
+        BSP_LED_On(LED6);
+      }else if (((contadorSema>contadorVerde) && (contadorSema < (contadorVerde+contadorAmarillo)))){
+        printf("Enciendo Amarillo");
+        BSP_LED_Off(LED6);
+        BSP_LED_On(LED5);
+      }else if (((contadorSema>(contadorVerde+contadorAmarillo)) && (contadorSema < (contadorVerde+contadorAmarillo+contadorRojo)))){
+        printf("Enciendo Rojo");
+        BSP_LED_Off(LED5);
+        BSP_LED_On(LED3);
+      }else if ((contadorSema > (contadorVerde+contadorAmarillo+contadorRojo))){
+        contadorSema=1;
+        printf("Enciendo Verde");
+        BSP_LED_Off(LED3);
+        BSP_LED_On(LED6);
+      }
+
+    }
+  }
 }
-// void TIM2_IRQHandler(void){
-//   if (TIM_GetITStatus(TIM9, TIM_IT_UPDATE) != RESET){
-//     //HAL_NVIC_ClearPendingIRQ(TIM2_IRQn);
-//     BSP_LED_Toggle(LED4);
-//   }
-    
-// }
+
 
 
 int main (){
