@@ -128,18 +128,6 @@ int main (){
   initializeTimers();
 
 
-while (1)
-{
-  BSP_LED_Off(LED3);
-  BSP_LED_Off(LED5);
-  BSP_LED_On(LED6);
-  HAL_Delay(10000);
-  BSP_LED_Off(LED6);
-  BSP_LED_On (LED5);
-  HAL_Delay(2000);
-  BSP_LED_Off(LED5);
-  BSP_LED_On (LED3);
-  HAL_Delay(15000);
-  BSP_LED_Off(LED3);
-}
+  while (1){
+  }
 }
