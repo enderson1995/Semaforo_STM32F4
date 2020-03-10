@@ -129,5 +129,6 @@ int main (){
 
 
   while (1){
+    TIM2_IRQHandler();
   }
 }
